@@ -1,0 +1,52 @@
+name: Template Setup
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  setup:
+    if: github.event.created || github.run_number == 1
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check if template
+        id: check
+        run: |
+          NAME=$(node -e "console.log(JSON.parse(require('fs').readFileSync('package.json','utf8')).name)")
+          if [ "$NAME" = "my-electron-app" ]; then
+            echo "is_template=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_template=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create setup checklist
+        if: steps.check.outputs.is_template == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --title "Setup: Configure your Electron app" \
+            --body "$(cat <<'EOF'
+          Welcome! You've created a new project from **electron-app-starter**. Here's your setup checklist:
+
+          ## Required
+          - [ ] Update `package.json` — change `name`, `description`, `build.appId`, `build.productName`
+          - [ ] Replace `assets/icon.png` with your own app icon (256x256 px minimum)
+          - [ ] Update `<title>` and `<h1>` in `src/renderer/index.html`
+
+          ## Code Signing (optional — builds work without it)
+          - [ ] **macOS:** Add secrets `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` — see [Code Signing Guide](docs/CODE_SIGNING.md)
+          - [ ] **Windows:** Add secrets `CSC_LINK`, `CSC_KEY_PASSWORD` — see [Code Signing Guide](docs/CODE_SIGNING.md)
+
+          ## Recommended
+          - [ ] Write tests in `tests/` and run with `npm test`
+          - [ ] Review [Auto-Update Guide](docs/AUTO_UPDATE.md) for release workflow
+          - [ ] Delete this issue when done
+
+          Happy building!
+          EOF
+          )"

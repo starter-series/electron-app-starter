@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My App</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>My App</h1>
+    <p class="subtitle">Your Electron app is running.</p>
+
+    <div class="versions">
+      <div class="version-item">
+        <span class="label">Electron</span>
+        <span id="electron-version" class="value">-</span>
+      </div>
+      <div class="version-item">
+        <span class="label">Chrome</span>
+        <span id="chrome-version" class="value">-</span>
+      </div>
+      <div class="version-item">
+        <span class="label">Node</span>
+        <span id="node-version" class="value">-</span>
+      </div>
+      <div class="version-item">
+        <span class="label">App</span>
+        <span id="app-version" class="value">-</span>
+      </div>
+    </div>
+
+    <div id="update-banner" class="update-banner" hidden>
+      Update downloaded. Restart to apply.
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
