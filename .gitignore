@@ -9,3 +9,4 @@ dist/
 *.zip
 .env
 .idea/
+.claude/
