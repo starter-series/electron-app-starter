@@ -24,18 +24,23 @@ Build your desktop app. Push to release.
 
 ## Quick Start
 
+**Via [create-starter](https://github.com/starter-series/create-starter)** (recommended):
+
 ```bash
-# 1. Click "Use this template" on GitHub (or clone)
-git clone https://github.com/starter-series/electron-app-starter.git my-app
-cd my-app
+npx @starter-series/create my-electron-app --template electron-app
+cd my-electron-app && npm install && npm start
+```
 
-# 2. Install dependencies
-npm install
+**Or clone directly:**
 
-# 3. Run the app
-npm start
+```bash
+git clone https://github.com/starter-series/electron-app-starter my-electron-app
+cd my-electron-app && npm install && npm start
+```
 
-# 4. Build for your platform
+Then build for your platform:
+
+```bash
 npm run dist
 ```
 

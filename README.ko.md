@@ -24,18 +24,23 @@
 
 ## 빠른 시작
 
+**[create-starter](https://github.com/starter-series/create-starter) 사용** (권장):
+
 ```bash
-# 1. GitHub에서 "Use this template" 클릭 (또는 clone)
-git clone https://github.com/starter-series/electron-app-starter.git my-app
-cd my-app
+npx @starter-series/create my-electron-app --template electron-app
+cd my-electron-app && npm install && npm start
+```
 
-# 2. 의존성 설치
-npm install
+**또는 직접 clone:**
 
-# 3. 앱 실행
-npm start
+```bash
+git clone https://github.com/starter-series/electron-app-starter my-electron-app
+cd my-electron-app && npm install && npm start
+```
 
-# 4. 현재 플랫폼용 빌드
+현재 플랫폼용 빌드:
+
+```bash
 npm run dist
 ```
 
