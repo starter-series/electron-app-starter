@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My App</title>
   <link rel="stylesheet" href="styles.css">
@@ -30,6 +30,24 @@
         <span id="app-version" class="value">-</span>
       </div>
     </div>
+
+    <section class="ipc-panel" aria-labelledby="ipc-heading">
+      <h2 id="ipc-heading">IPC bridge</h2>
+
+      <div class="ipc-block">
+        <h3>Request / response</h3>
+        <p class="hint">window.api.getSystemInfo()</p>
+        <pre id="system-info">loading...</pre>
+      </div>
+
+      <div class="ipc-block">
+        <h3>Event subscription</h3>
+        <p class="hint">window.api.onPowerEvent(cb) — try sleeping your laptop</p>
+        <ul id="power-log" class="power-log">
+          <li class="power-empty">waiting for power events...</li>
+        </ul>
+      </div>
+    </section>
 
     <div id="update-banner" class="update-banner" hidden>
       Update downloaded. Restart to apply.

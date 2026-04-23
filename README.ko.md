@@ -44,15 +44,20 @@ npm run dist
 ```
 ├── src/
 │   ├── main.js                 # 메인 프로세스 (BrowserWindow, IPC, 자동 업데이트)
-│   ├── preload.js              # 프리로드 스크립트 (contextBridge)
+│   ├── preload.js              # 프리로드 스크립트 (contextBridge + IPC 화이트리스트)
+│   ├── system-info.js          # system-info 핸들러 본체 (순수 함수)
+│   ├── shared/
+│   │   └── ipc-contract.js     # IPC 채널/타입 단일 출처
 │   └── renderer/
 │       ├── index.html          # 렌더러 HTML
-│       ├── renderer.js         # 렌더러 로직
+│       ├── renderer.js         # 렌더러 로직 (window.api 사용)
 │       └── styles.css          # 최소 스타일
 ├── assets/
 │   └── icon.png                # 앱 아이콘 플레이스홀더 (교체 필요)
 ├── tests/
-│   └── app.test.js             # 구조 테스트
+│   ├── app.test.js                    # 구조 테스트
+│   ├── ipc-contract.test.js           # 채널 계약 + preload 화이트리스트
+│   └── system-info-handler.test.js    # 순수 함수 핸들러 (DI 모킹)
 ├── docs/
 │   ├── CODE_SIGNING.md         # macOS + Windows 코드 서명 설정
 │   └── AUTO_UPDATE.md          # electron-updater 설정 가이드
@@ -75,7 +80,8 @@ npm run dist
 - **CD 파이프라인** — 원클릭 크로스 플랫폼 빌드 + GitHub Release (matrix 전략)
 - **자동 업데이트** — `electron-updater`가 GitHub Releases를 확인하고 자동으로 다운로드 및 설치
 - **코드 서명** — 선택적 macOS 공증 + Windows 서명 (GitHub Secrets)
-- **보안** — `contextIsolation: true`, `nodeIntegration: false`, Content Security Policy
+- **보안** — `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`, Content Security Policy
+- **IPC 브리지 예제** — 요청/응답 + 이벤트 구독 패턴 데모 + 화이트리스트 기반 preload ([자세히](#ipc-브리지-예제))
 - **버전 관리** — `npm run version:patch/minor/major`
 - **템플릿 셋업** — 첫 사용 시 설정 체크리스트 이슈 자동 생성
 
@@ -162,6 +168,58 @@ npm run dist:linux
 npm run lint
 npm test
 ```
+
+## IPC 브리지 예제
+
+실전 Electron 앱에서 꼭 필요한 두 가지 IPC 패턴을 바로 쓸 수 있는 형태로 포함했습니다. 모든 채널 이름은 [`src/shared/ipc-contract.js`](src/shared/ipc-contract.js)에 단일 출처로 모여 있어, preload 화이트리스트와 메인 프로세스 핸들러가 어긋날 수 없습니다.
+
+**1. 요청 / 응답** — `ipcRenderer.invoke` ↔ `ipcMain.handle`
+
+```js
+// src/preload.js — window.api에 화이트리스트 강제 적용
+contextBridge.exposeInMainWorld('api', {
+  getSystemInfo() {
+    assertAllowed(invokeAllowed, 'system-info');
+    return ipcRenderer.invoke('system-info');
+  },
+  // ...
+});
+```
+
+```js
+// src/main.js — Electron 없이도 테스트 가능한 순수 핸들러
+ipcMain.handle('system-info', () =>
+  buildSystemInfo({ os, electronApp: app, process }),
+);
+```
+
+**2. 이벤트 구독** — `webContents.send` → `ipcRenderer.on`
+
+```js
+// src/preload.js — unsubscribe 함수 반환
+onPowerEvent(callback) {
+  const listener = (_e, payload) => callback(payload);
+  ipcRenderer.on('power-event', listener);
+  return () => ipcRenderer.removeListener('power-event', listener);
+}
+```
+
+```js
+// src/main.js — 네이티브 powerMonitor 이벤트 팬아웃
+powerMonitor.on('suspend', () => broadcast('suspend'));
+powerMonitor.on('resume',  () => broadcast('resume'));
+```
+
+**렌더러 사용** ([`src/renderer/renderer.js`](src/renderer/renderer.js)):
+
+```js
+window.api.getSystemInfo().then(renderInfoBlock);
+
+const off = window.api.onPowerEvent(renderLogLine);
+window.addEventListener('beforeunload', off); // 반드시 unsubscribe
+```
+
+**보안 설계** — preload는 `ipcRenderer` 자체를 노출하지 않고, 화이트리스트에 없는 채널은 거부합니다. BrowserWindow는 `contextIsolation: true`, `nodeIntegration: false`, **`sandbox: true`**, 엄격한 CSP(`default-src 'self'`)로 실행됩니다. 위협 모델은 [Electron Context Isolation 공식 문서](https://www.electronjs.org/docs/latest/tutorial/context-isolation) 참고.
 
 ## Electron Forge / Electron Vite 대신 이걸 쓰는 이유
 

@@ -1,6 +1,9 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, powerMonitor } = require('electron');
 const { autoUpdater } = require('electron-updater');
+const os = require('node:os');
 const path = require('path');
+const { buildSystemInfo } = require('./system-info.js');
+const { INVOKE_CHANNELS, EVENT_CHANNELS } = require('./shared/ipc-contract.js');
 
 let mainWindow;
 
@@ -12,18 +15,44 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
     },
   });
 
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 }
 
-// IPC handlers
-ipcMain.handle('get-app-version', () => {
-  return app.getVersion();
-});
+// --- IPC: request/response ---------------------------------------------------
 
-// Auto-update (works when published to GitHub Releases)
+ipcMain.handle('get-app-version', () => app.getVersion());
+
+ipcMain.handle('system-info', () => buildSystemInfo({ os, electronApp: app, process }));
+
+// --- IPC: main -> renderer broadcast ----------------------------------------
+
+/**
+ * Subscribe to native `powerMonitor` events and fan them out to every live
+ * BrowserWindow. Real apps often react to sleep/resume (e.g. reopen sockets)
+ * or AC/battery (e.g. throttle background work on battery) — this demo just
+ * forwards them so the renderer can log them.
+ */
+function registerPowerEventBridge() {
+  /** @param {import('./shared/ipc-contract.js').PowerEvent['kind']} kind */
+  const forward = (kind) => {
+    const payload = { kind, at: Date.now() };
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.webContents.send('power-event', payload);
+    }
+  };
+
+  powerMonitor.on('suspend', () => forward('suspend'));
+  powerMonitor.on('resume', () => forward('resume'));
+  powerMonitor.on('on-ac', () => forward('on-ac'));
+  powerMonitor.on('on-battery', () => forward('on-battery'));
+}
+
+// --- Auto-update -------------------------------------------------------------
+
 function checkForUpdates() {
   autoUpdater.logger = console;
   autoUpdater.autoDownload = true;
@@ -49,6 +78,7 @@ function checkForUpdates() {
 
 app.whenReady().then(() => {
   createWindow();
+  registerPowerEventBridge();
 
   // Only check for updates in packaged builds
   if (app.isPackaged) {
@@ -67,3 +97,6 @@ app.on('window-all-closed', () => {
     app.quit();
   }
 });
+
+// Exported for structure tests / tooling — do not import from renderer.
+module.exports = { INVOKE_CHANNELS, EVENT_CHANNELS };

@@ -41,15 +41,25 @@ describe('Project structure', () => {
     expect(preload).toContain('exposeInMainWorld');
   });
 
-  test('main process has contextIsolation enabled', () => {
+  test('main process has contextIsolation, nodeIntegration:false, sandbox:true', () => {
     const main = fs.readFileSync(path.join(root, 'src', 'main.js'), 'utf8');
     expect(main).toContain('contextIsolation: true');
     expect(main).toContain('nodeIntegration: false');
+    expect(main).toContain('sandbox: true');
   });
 
   test('index.html has Content-Security-Policy', () => {
     const html = fs.readFileSync(path.join(root, 'src', 'renderer', 'index.html'), 'utf8');
     expect(html).toContain('Content-Security-Policy');
+    expect(html).toContain("default-src 'self'");
+  });
+
+  test('shared IPC contract module exists', () => {
+    expect(fs.existsSync(path.join(root, 'src', 'shared', 'ipc-contract.js'))).toBe(true);
+  });
+
+  test('system-info helper module exists', () => {
+    expect(fs.existsSync(path.join(root, 'src', 'system-info.js'))).toBe(true);
   });
 });
 
