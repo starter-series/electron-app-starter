@@ -44,15 +44,20 @@ npm run dist
 ```
 ├── src/
 │   ├── main.js                 # Main process (BrowserWindow, IPC, auto-update)
-│   ├── preload.js              # Preload script (contextBridge)
+│   ├── preload.js              # Preload script (contextBridge + IPC whitelist)
+│   ├── system-info.js          # Pure handler body for the system-info channel
+│   ├── shared/
+│   │   └── ipc-contract.js     # Single source of truth for IPC channels + types
 │   └── renderer/
 │       ├── index.html          # Renderer HTML
-│       ├── renderer.js         # Renderer logic
+│       ├── renderer.js         # Renderer logic (consumes window.api)
 │       └── styles.css          # Minimal styles
 ├── assets/
 │   └── icon.png                # App icon placeholder (replace with yours)
 ├── tests/
-│   └── app.test.js             # Structure tests
+│   ├── app.test.js                    # Structure tests
+│   ├── ipc-contract.test.js           # Channel contract + preload whitelist
+│   └── system-info-handler.test.js    # Pure-function handler (DI mocked)
 ├── docs/
 │   ├── CODE_SIGNING.md         # macOS + Windows code signing setup
 │   └── AUTO_UPDATE.md          # electron-updater configuration guide
@@ -75,7 +80,8 @@ npm run dist
 - **CD Pipeline** — One-click cross-platform build + GitHub Release via matrix strategy
 - **Auto-update** — `electron-updater` checks GitHub Releases on startup, downloads and installs automatically
 - **Code signing** — Optional macOS notarization + Windows signing via GitHub Secrets
-- **Security** — `contextIsolation: true`, `nodeIntegration: false`, Content Security Policy
+- **Security** — `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`, Content Security Policy
+- **IPC bridge example** — Request/response + event subscription demo with a whitelist-based preload ([details](#ipc-bridge-example))
 - **Version management** — `npm run version:patch/minor/major`
 - **Template setup** — Auto-creates setup checklist issue on first use
 
@@ -162,6 +168,58 @@ npm run dist:linux
 npm run lint
 npm test
 ```
+
+## IPC bridge example
+
+The starter ships with a working IPC bridge that covers the two patterns real Electron apps need. All channel names live in [`src/shared/ipc-contract.js`](src/shared/ipc-contract.js) — the main process and the preload both read from it so the whitelist can never drift from the handler table.
+
+**1. Request / response** — `ipcRenderer.invoke` ↔ `ipcMain.handle`
+
+```js
+// src/preload.js — whitelist-enforced API on window.api
+contextBridge.exposeInMainWorld('api', {
+  getSystemInfo() {
+    assertAllowed(invokeAllowed, 'system-info');
+    return ipcRenderer.invoke('system-info');
+  },
+  // ...
+});
+```
+
+```js
+// src/main.js — pure handler, testable without Electron
+ipcMain.handle('system-info', () =>
+  buildSystemInfo({ os, electronApp: app, process }),
+);
+```
+
+**2. Event subscription** — `webContents.send` → `ipcRenderer.on`
+
+```js
+// src/preload.js — returns an unsubscribe function
+onPowerEvent(callback) {
+  const listener = (_e, payload) => callback(payload);
+  ipcRenderer.on('power-event', listener);
+  return () => ipcRenderer.removeListener('power-event', listener);
+}
+```
+
+```js
+// src/main.js — fan out native powerMonitor events
+powerMonitor.on('suspend', () => broadcast('suspend'));
+powerMonitor.on('resume',  () => broadcast('resume'));
+```
+
+**Renderer usage** ([`src/renderer/renderer.js`](src/renderer/renderer.js)):
+
+```js
+window.api.getSystemInfo().then(renderInfoBlock);
+
+const off = window.api.onPowerEvent(renderLogLine);
+window.addEventListener('beforeunload', off); // always unsubscribe
+```
+
+**Security stance** — the preload never exposes `ipcRenderer` itself, only the specific methods above, and rejects any channel that's not on the whitelist. The BrowserWindow runs with `contextIsolation: true`, `nodeIntegration: false`, **`sandbox: true`**, and a strict CSP (`default-src 'self'`). See [Electron's Context Isolation docs](https://www.electronjs.org/docs/latest/tutorial/context-isolation) for the threat model this protects against.
 
 ## Why This Over Electron Forge / Electron Vite?
 
