@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, powerMonitor } = require('electron');
+const { app, BrowserWindow, ipcMain, powerMonitor, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const os = require('node:os');
 const path = require('path');
@@ -6,6 +6,60 @@ const { buildSystemInfo } = require('./system-info.js');
 const { INVOKE_CHANNELS, EVENT_CHANNELS } = require('./shared/ipc-contract.js');
 
 let mainWindow;
+
+// Origins the renderer is allowed to navigate to in-window. Anything else
+// stays in-app via shell.openExternal (or is denied for the popup case).
+// Add your production hosts here before shipping.
+const ALLOWED_NAVIGATION_ORIGINS = new Set([
+  'file://', // local renderer html bundle
+]);
+
+function isAllowedNavigation(targetUrl) {
+  try {
+    const parsed = new URL(targetUrl);
+    if (parsed.protocol === 'file:') return true;
+    return ALLOWED_NAVIGATION_ORIGINS.has(parsed.origin);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Lock down a freshly created BrowserWindow against the two classic
+ * sandbox-escape vectors:
+ *
+ * - `window.open()` / `target="_blank"` opening a new BrowserWindow with
+ *   default webPreferences (i.e. nodeIntegration=true). Force every popup
+ *   through shell.openExternal so it lands in the user's browser.
+ * - In-window navigation to attacker-controlled origins. Block any
+ *   `will-navigate` to an origin not explicitly allowlisted; defer
+ *   external links to shell.openExternal too.
+ *
+ * Both guards remain effective even if a future webPreferences regression
+ * weakens contextIsolation/sandbox, so they're cheap defense-in-depth.
+ */
+function hardenWindow(win) {
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (isAllowedNavigation(url)) {
+      // Allow the popup if the target is allowlisted; inherits parent's
+      // hardened webPreferences via the default BrowserWindow contract.
+      return { action: 'allow' };
+    }
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      shell.openExternal(url).catch(() => {});
+    }
+    return { action: 'deny' };
+  });
+
+  win.webContents.on('will-navigate', (event, url) => {
+    if (!isAllowedNavigation(url)) {
+      event.preventDefault();
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        shell.openExternal(url).catch(() => {});
+      }
+    }
+  });
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -19,6 +73,7 @@ function createWindow() {
     },
   });
 
+  hardenWindow(mainWindow);
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 }
 
