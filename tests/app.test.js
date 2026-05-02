@@ -48,6 +48,16 @@ describe('Project structure', () => {
     expect(main).toContain('sandbox: true');
   });
 
+  test('main process locks down window-open + will-navigate', () => {
+    const main = fs.readFileSync(path.join(root, 'src', 'main.js'), 'utf8');
+    // Both guards must be wired — without them, a compromised renderer
+    // can spawn a default BrowserWindow (nodeIntegration=true) or
+    // navigate to an attacker-controlled origin.
+    expect(main).toContain('setWindowOpenHandler');
+    expect(main).toContain("'will-navigate'");
+    expect(main).toContain('shell.openExternal');
+  });
+
   test('index.html has Content-Security-Policy', () => {
     const html = fs.readFileSync(path.join(root, 'src', 'renderer', 'index.html'), 'utf8');
     expect(html).toContain('Content-Security-Policy');
