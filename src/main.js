@@ -108,6 +108,26 @@ function registerPowerEventBridge() {
 
 // --- Auto-update -------------------------------------------------------------
 
+// Tunable: if the auto-updater fails this many consecutive times, we
+// purge the partial-download cache and stop retrying for the session so
+// a corrupted download doesn't loop forever on restart.
+const AUTO_UPDATE_FAILURE_LIMIT = 3;
+let autoUpdateFailures = 0;
+
+function clearAutoUpdateCache() {
+  // electron-updater writes partial downloads under userData/pending/.
+  // Removing it forces the next session to start from a clean slate.
+  try {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const pendingDir = path.join(app.getPath('userData'), 'pending');
+    fs.rmSync(pendingDir, { recursive: true, force: true });
+    console.log('Auto-update cache cleared:', pendingDir);
+  } catch (err) {
+    console.log('Failed to clear auto-update cache:', err.message);
+  }
+}
+
 function checkForUpdates() {
   autoUpdater.logger = console;
   autoUpdater.autoDownload = true;
@@ -119,13 +139,29 @@ function checkForUpdates() {
 
   autoUpdater.on('update-downloaded', (info) => {
     console.log('Update downloaded:', info.version);
+    autoUpdateFailures = 0;
     if (mainWindow) {
       mainWindow.webContents.send('update-downloaded', info.version);
     }
   });
 
   autoUpdater.on('error', (err) => {
+    autoUpdateFailures += 1;
     console.log('Auto-update error:', err.message);
+    // Symmetric to update-downloaded: tell the renderer so it can show UI
+    // (toast / settings page indicator) instead of the user wondering why
+    // the app never updates.
+    if (mainWindow) {
+      mainWindow.webContents.send('update-error', {
+        message: err.message,
+        attempts: autoUpdateFailures,
+      });
+    }
+    if (autoUpdateFailures >= AUTO_UPDATE_FAILURE_LIMIT) {
+      console.log(`Auto-update failed ${autoUpdateFailures}× — purging cache`);
+      clearAutoUpdateCache();
+      autoUpdater.removeAllListeners();
+    }
   });
 
   autoUpdater.checkForUpdatesAndNotify();
