@@ -29,7 +29,7 @@
     "electron-builder": "^26.0.12",
     "eslint": "^10.2.1",
     "globals": "^17.5.0",
-    "jest": "^30.3.0"
+    "jest": "^30.4.2"
   },
   "build": {
     "appId": "com.example.myapp",
