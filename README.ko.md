@@ -78,17 +78,43 @@ npm run dist
 └── package.json
 ```
 
-## 주요 기능
+## 한눈에 보기
 
-- **크로스 플랫폼** — macOS (dmg, zip), Windows (NSIS 인스톨러), Linux (AppImage, deb)
-- **CI 파이프라인** — 보안 감사, ESLint, Jest (모든 push 및 PR)
-- **CD 파이프라인** — 원클릭 크로스 플랫폼 빌드 + GitHub Release (matrix 전략)
-- **자동 업데이트** — `electron-updater`가 GitHub Releases를 확인하고 자동으로 다운로드 및 설치
-- **코드 서명** — 선택적 macOS 공증 + Windows 서명 (GitHub Secrets)
-- **보안** — `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`, Content Security Policy
-- **IPC 브리지 예제** — 요청/응답 + 이벤트 구독 패턴 데모 + 화이트리스트 기반 preload ([자세히](#ipc-브리지-예제))
-- **버전 관리** — `npm run version:patch/minor/major`
-- **템플릿 셋업** — 첫 사용 시 설정 체크리스트 이슈 자동 생성
+### 현재 구현된 것 (Currently implemented)
+
+- 크로스 플랫폼 데스크톱 빌드 — macOS (`dmg`, `zip`), Windows (NSIS 인스톨러), Linux (AppImage, `deb`)
+- CI 파이프라인 — `npm audit`, ESLint v9 flat config, 레포별 baseline 커버리지 게이트가 적용된 Jest
+- CD 파이프라인 — Actions 탭에서 수동 트리거하는 macOS / Windows / Linux 매트릭스 빌드 + 모든 바이너리가 첨부된 GitHub Release
+- 자동 업데이트 — GitHub Releases 기반 `electron-updater`, 렌더러에 오류 노출 포함
+- 선택적 코드 서명 — GitHub Secrets로 macOS 공증 + Windows 서명
+- 렌더러 하드닝 — `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`, 엄격한 CSP, `window.open` + cross-origin 네비게이션 차단
+- IPC 계약 — 화이트리스트가 강제되는 preload 브리지, 채널의 단일 출처는 [`src/shared/ipc-contract.js`](src/shared/ipc-contract.js)
+- 공급망 가드 — 설치 시 `--ignore-scripts`, sha256으로 핀된 `gitleaks`, push/PR 및 주간 CodeQL
+- 템플릿 UX — 버전 업 스크립트(`npm run version:patch/minor/major`), 첫 사용 시 자동 생성되는 설정 체크리스트 이슈
+- 테스트 30건, 구문/분기/함수/라인 커버리지 100 %
+
+### 계획된 것 (Planned)
+
+- 외부에 공언된 항목 없음. TypeScript 전환은 별도 스캐폴드 없이 추가 경로로만 문서화되어 있습니다 ([TypeScript는?](#typescript는) 참고).
+
+### 설계 의도 (Design intent)
+
+- **플러그인 툴체인 대신 vanilla JavaScript.** LLM이 프레임워크를 먼저 배우지 않고도 소스를 읽고 고칠 수 있도록. 플러그인 시스템이 필요하면 Forge / electron-vite를 쓰면 됩니다. 이 템플릿의 답은 "첫날부터 CI/CD와 서명이 켜져 있어야 한다"입니다.
+- **`electron-builder` 설정은 `package.json` 한 곳.** 기여자에게 가리킬 파일이 하나뿐 — maker/publisher라는 별도 표면이 동기화될 일이 없습니다.
+- **공유 모듈에 있는 IPC 채널.** preload 화이트리스트와 메인 프로세스 핸들러 테이블 모두 `src/shared/ipc-contract.js`를 읽으므로 어긋날 수 없습니다. preload는 raw `ipcRenderer`를 절대 노출하지 않습니다.
+- **기본값 `sandbox: true`.** 대다수 Electron 스타터가 빼놓는 옵션이지만, 렌더러 위협 모델에서 결정적인 부분이라 항상 켜둡니다.
+- **레포별 baseline 커버리지 게이트.** 80 % 같은 고정값이 아니라 현재 상태가 바닥선 — 표면적이 작은 레포에서도 게이트가 정직하게 유지됩니다.
+
+### 비목표 (Non-goals)
+
+- 렌더러에서 React / Vue / Svelte + HMR — [electron-vite](https://electron-vite.org/)를 쓰세요.
+- Forge 플러그인 생태계(maker, publisher, plugin) — [Electron Forge](https://www.electronforge.io/)를 쓰세요.
+- 복잡한 빌드 요구사항이 있는 네이티브 모듈을 미리 배선해두는 것.
+- "다 들어있음" 식 프레임워크 경험. AI가 편집할 때 숨겨진 플러그인 동작을 추론하지 않아도 되도록 얇게 유지합니다.
+
+### 비공개 (Redacted)
+
+- 없음. 공개 템플릿 — 외부 인물, 계정, 내부 사례를 어디에도 언급하지 않습니다.
 
 ## CI/CD
 
@@ -226,30 +252,19 @@ window.addEventListener('beforeunload', off); // 반드시 unsubscribe
 
 **보안 설계** — preload는 `ipcRenderer` 자체를 노출하지 않고, 화이트리스트에 없는 채널은 거부합니다. BrowserWindow는 `contextIsolation: true`, `nodeIntegration: false`, **`sandbox: true`**, 엄격한 CSP(`default-src 'self'`)로 실행됩니다. 위협 모델은 [Electron Context Isolation 공식 문서](https://www.electronjs.org/docs/latest/tutorial/context-isolation) 참고.
 
-## Electron Forge / Electron Vite 대신 이걸 쓰는 이유
+## 비교 — 이 템플릿 vs Forge / electron-vite
 
-[Electron Forge](https://www.electronforge.io/)와 [electron-vite](https://electron-vite.org/)는 Electron의 빌드 복잡성을 관리하는 **툴체인**입니다. 이 템플릿은 다른 접근입니다:
+빠른 참조용 표입니다. "왜"는 [설계 의도](#설계-의도-design-intent) / [비목표](#비목표-non-goals) 섹션에 있고, 이 표는 차이만 나란히 보여줍니다.
 
 |  | 이 템플릿 | Forge / electron-vite |
 |---|---|---|
 | 철학 | CI/CD를 갖춘 가벼운 스타터 | 플러그인 기반 풀 툴체인 |
-| 빌드 시스템 | electron-builder (package.json 설정) | Forge maker/publisher 또는 Vite |
+| 빌드 시스템 | `electron-builder` (`package.json` 설정) | Forge maker/publisher 또는 Vite |
 | CI/CD | matrix 빌드 + 자동 업데이트 포함 | 미포함 |
 | 코드 서명 | GitHub Secrets 설정 가이드 포함 | 수동 설정 |
 | 자동 업데이트 | GitHub Releases와 바로 작동 | 수동 설정 필요 |
 | 의존성 | runtime 1개, dev 6개 | 50개+ |
 | AI/바이브코딩 | LLM이 깔끔한 vanilla JS 생성 | LLM이 플러그인 시스템을 이해해야 함 |
-
-**이 템플릿을 선택하세요:**
-- 첫날부터 프로덕션 CI/CD와 자동 업데이트가 필요할 때
-- GitHub Actions로 크로스 플랫폼 빌드 + 코드 서명이 필요할 때
-- AI 도구로 앱 코드를 생성할 때
-- 유틸리티 규모의 앱을 만들 때
-
-**Forge/electron-vite를 선택하세요:**
-- 렌더러에서 React/Vue/Svelte + HMR이 필요할 때
-- Forge 플러그인 생태계가 필요할 때
-- 복잡한 네이티브 모듈 요구사항이 있을 때
 
 ### TypeScript는?
 

@@ -78,17 +78,43 @@ npm run dist
 └── package.json
 ```
 
-## Features
+## At a glance
 
-- **Cross-platform** — macOS (dmg, zip), Windows (NSIS installer), Linux (AppImage, deb)
-- **CI Pipeline** — Security audit, ESLint, Jest on every push and PR
-- **CD Pipeline** — One-click cross-platform build + GitHub Release via matrix strategy
-- **Auto-update** — `electron-updater` checks GitHub Releases on startup, downloads and installs automatically
-- **Code signing** — Optional macOS notarization + Windows signing via GitHub Secrets
-- **Security** — `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`, Content Security Policy
-- **IPC bridge example** — Request/response + event subscription demo with a whitelist-based preload ([details](#ipc-bridge-example))
-- **Version management** — `npm run version:patch/minor/major`
-- **Template setup** — Auto-creates setup checklist issue on first use
+### Currently implemented
+
+- Cross-platform desktop builds — macOS (`dmg`, `zip`), Windows (NSIS installer), Linux (AppImage, `deb`)
+- CI pipeline — `npm audit`, ESLint v9 flat config, Jest with a per-repo baseline coverage gate
+- CD pipeline — manual-trigger matrix build across macOS / Windows / Linux, GitHub Release with all binaries attached
+- Auto-update — `electron-updater` against GitHub Releases, with renderer-side error surfacing
+- Optional code signing — macOS notarization + Windows signing via GitHub Secrets
+- Renderer hardening — `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`, strict CSP, `window.open` + cross-origin navigation blocked
+- IPC contract — whitelist-enforced preload bridge, single source of truth for channels in [`src/shared/ipc-contract.js`](src/shared/ipc-contract.js)
+- Supply-chain guards — `--ignore-scripts` on install, `gitleaks` pinned by sha256, CodeQL on push/PR + weekly
+- Template UX — version bump scripts (`npm run version:patch/minor/major`), auto-created setup checklist issue on first use
+- 30 tests, 100 % statement / branch / function / line coverage
+
+### Planned
+
+- Nothing publicly promised. A TypeScript migration is documented as an additive path (see [What about TypeScript?](#what-about-typescript)) rather than scaffolded.
+
+### Design intent
+
+- **Vanilla JavaScript over a plugin toolchain.** LLMs can read and edit the source without first learning a framework. Forge and electron-vite are the right answer for plugin systems; this template is the right answer for "CI/CD and signing should be on by day one."
+- **`electron-builder` configured in `package.json`.** One file to point a contributor at — no separate makers/publishers surface to keep in sync.
+- **IPC channels in a shared module.** The preload whitelist and the main-process handler table both read from `src/shared/ipc-contract.js`, so they can't drift. The preload never exposes raw `ipcRenderer`.
+- **`sandbox: true` by default.** Most Electron starters skip this; we treat it as load-bearing for the renderer threat model.
+- **Per-repo baseline coverage gate.** Floor is the current state, not a flat 80 % rule — keeps the gate honest when the surface area is small.
+
+### Non-goals
+
+- React / Vue / Svelte with HMR inside the renderer — use [electron-vite](https://electron-vite.org/).
+- The Forge plugin ecosystem (makers, publishers, plugins) — use [Electron Forge](https://www.electronforge.io/).
+- Pre-wired native modules with complex build requirements.
+- A "batteries included" framework experience. This template stays thin so AI-assisted edits don't have to reason about hidden plugin behavior.
+
+### Redacted
+
+- None. Public template — no external persons, accounts, or internal incidents are referenced anywhere in the repo.
 
 ## CI/CD
 
@@ -226,30 +252,19 @@ window.addEventListener('beforeunload', off); // always unsubscribe
 
 **Security stance** — the preload never exposes `ipcRenderer` itself, only the specific methods above, and rejects any channel that's not on the whitelist. The BrowserWindow runs with `contextIsolation: true`, `nodeIntegration: false`, **`sandbox: true`**, and a strict CSP (`default-src 'self'`). See [Electron's Context Isolation docs](https://www.electronjs.org/docs/latest/tutorial/context-isolation) for the threat model this protects against.
 
-## Why This Over Electron Forge / Electron Vite?
+## Comparison — this vs Forge / electron-vite
 
-[Electron Forge](https://www.electronforge.io/) and [electron-vite](https://electron-vite.org/) are excellent **toolchains** that manage Electron's build complexity. This template takes a different approach:
+Quick reference. The "why" lives in [Design intent](#design-intent) and [Non-goals](#non-goals); this table just lays the differences side-by-side.
 
 |  | This template | Forge / electron-vite |
 |---|---|---|
 | Philosophy | Thin starter with CI/CD | Full toolchain with plugins |
-| Build system | electron-builder (config in package.json) | Forge makers/publishers or Vite |
+| Build system | `electron-builder` (config in `package.json`) | Forge makers/publishers or Vite |
 | CI/CD | Full pipeline with matrix builds + auto-update | Not included |
 | Code signing | GitHub Secrets setup guide included | Manual setup |
 | Auto-update | Works out of the box with GitHub Releases | Manual configuration |
 | Dependencies | 1 runtime, 6 dev | 50+ |
 | AI/vibe-coding | LLMs generate clean vanilla JS | LLMs must understand plugin system |
-
-**Choose this template if:**
-- You want production CI/CD and auto-update from day one
-- You need cross-platform builds with code signing via GitHub Actions
-- You're using AI tools to generate app code
-- Your app is utility-scale, not a complex framework app
-
-**Choose Forge/electron-vite if:**
-- You need React/Vue/Svelte with HMR in the renderer
-- You want the Forge plugin ecosystem
-- Your app has complex native module requirements
 
 ### What about TypeScript?
 
