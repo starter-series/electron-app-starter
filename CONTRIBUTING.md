@@ -22,17 +22,7 @@ You need Node 22+ (`.nvmrc` pins it). `npm test` runs Jest with a coverage gate 
 
 ## What CI gates on
 
-Every PR runs:
-
-- `gitleaks` (secret scan, pinned by sha256)
-- `npm audit --audit-level=high`
-- `npx license-checker` (no GPL family in dependencies)
-- ESLint v9 flat config
-- Jest with coverage threshold (currently 95% statement/branch/function/line, actuals 100%)
-- A dry-run `electron-builder --dir` to catch packaging regressions
-- CodeQL (push/PR + weekly)
-
-`main` is protected: CI must pass, linear history is required, force-push is disabled.
+See [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — that file is the single source of truth (secret scan, license check, audit, lint, test+coverage, dry-run build). `main` is also branch-protected: CI must pass, linear history is required, force-push is disabled.
 
 ## Style
 
@@ -47,11 +37,7 @@ Conventional commits style (`feat:`, `fix:`, `chore:`, `docs:`, `test:`, `ci:`).
 
 ## Releasing (maintainers only)
 
-1. `npm run version:patch` (or `minor` / `major`).
-2. Commit and push to `main`.
-3. **Actions** tab → **Build & Release** → **Run workflow**.
-4. The CD pipeline runs CI as a gate, builds on macOS/Windows/Linux in parallel, attests build provenance, and publishes a GitHub Release with all installers attached.
-5. `update-changelog.yml` mirrors the release notes into `CHANGELOG.md` automatically.
+See [README.md § How to release](README.md#cd-manual-trigger-via-actions-tab). The CD pipeline (`.github/workflows/cd.yml`) is the single source of truth for the build/sign/attest/publish sequence; `update-changelog.yml` mirrors release notes back into `CHANGELOG.md`.
 
 ## Security
 
