@@ -147,7 +147,10 @@ jobs:
       - name: List artifacts
         run: find artifacts -type f 2>/dev/null || echo "No artifacts found"
 
-      # SLSA Level 3 build provenance for every installer / archive.
+      # SLSA Level 3 build provenance for every installer / archive
+      # *and* the electron-updater metadata (latest*.yml). Attesting
+      # the .yml matters because it carries the SHA the updater checks
+      # — without it the auto-update trust chain has a gap.
       # Separate from code signing: signing proves *who* signed; this
       # attestation proves *which workflow run* produced the bytes.
       - name: Attest build provenance
@@ -159,6 +162,8 @@ jobs:
             artifacts/*.exe
             artifacts/*.AppImage
             artifacts/*.deb
+            artifacts/*.yml
+            artifacts/*.yaml
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
