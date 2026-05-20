@@ -5,18 +5,25 @@ on:
     - cron: '0 0 * * 1' # Every Monday 00:00 UTC
   workflow_dispatch:
 
+# Workflow-level grant is minimal (read). Only the issue-touching jobs
+# below are granted `issues: write` at the job scope — the reused CI job
+# never needs to write issues.
 permissions:
   contents: read
-  issues: write
 
 jobs:
   ci:
     uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
 
   open-issue-on-failure:
     needs: ci
     if: failure()
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
     steps:
       - uses: actions/github-script@v9
         with:
@@ -53,6 +60,9 @@ jobs:
     needs: ci
     if: success()
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
     steps:
       - uses: actions/github-script@v9
         with:

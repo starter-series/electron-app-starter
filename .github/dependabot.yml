@@ -1,4 +1,11 @@
 version: 2
+
+# Notes:
+# - minor/patch updates are grouped per ecosystem to reduce review churn.
+# - major updates are kept ungrouped so each one gets its own PR — they
+#   often involve breaking changes (e.g. electron 41 -> 42 Chromium bump,
+#   eslint major flat-config tweaks) and deserve individual review.
+
 updates:
   - package-ecosystem: npm
     directory: /
@@ -6,10 +13,15 @@ updates:
       interval: weekly
     open-pull-requests-limit: 10
     groups:
-      lint:
+      lint-minor:
         patterns: ["eslint", "@eslint/*", "globals"]
-      test:
+        update-types: ["minor", "patch"]
+      test-minor:
         patterns: ["jest", "@jest/*"]
+        update-types: ["minor", "patch"]
+      runtime-minor:
+        patterns: ["electron", "electron-builder", "electron-updater"]
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: github-actions
     directory: /
@@ -17,5 +29,6 @@ updates:
       interval: weekly
     open-pull-requests-limit: 5
     groups:
-      actions:
+      actions-minor:
         patterns: ["*"]
+        update-types: ["minor", "patch"]

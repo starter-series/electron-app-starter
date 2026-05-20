@@ -1,11 +1,52 @@
 const { app, BrowserWindow, ipcMain, powerMonitor, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const os = require('node:os');
-const path = require('path');
+const path = require('node:path');
 const { buildSystemInfo } = require('./system-info.js');
 const { INVOKE_CHANNELS, EVENT_CHANNELS } = require('./shared/ipc-contract.js');
 
 let mainWindow;
+
+/**
+ * Last-resort crash handlers. Without these, an uncaught error in the
+ * main process silently kills the app, an unhandled rejection bubbles
+ * to a deprecated default that may change between Node majors, and a
+ * renderer crash leaves a blank BrowserWindow with no recourse.
+ *
+ * We can't always recover, but we can at least leave a trail on stderr
+ * (visible in `--enable-logging`, OS-level logs, and the user's
+ * `~/Library/Logs/<app>` directory on macOS) and try to relaunch the
+ * primary window when the renderer dies.
+ *
+ * Real apps should swap console.error for whatever telemetry sink they
+ * use; the template keeps it on stderr so the AGENTS.md "no paid SaaS"
+ * rule isn't violated by default.
+ */
+function registerCrashHandlers() {
+  process.on('uncaughtException', (err) => {
+    console.error('uncaughtException in main process:', err);
+  });
+  process.on('unhandledRejection', (reason) => {
+    console.error('unhandledRejection in main process:', reason);
+  });
+  app.on('render-process-gone', (_event, webContents, details) => {
+    console.error('render-process-gone:', details);
+    // If the primary window died and no other window is alive, relaunch
+    // a fresh one so the app isn't a zombie. Skip if multiple windows
+    // are still up — let the user keep working in those.
+    if (
+      mainWindow
+      && webContents === mainWindow.webContents
+      && BrowserWindow.getAllWindows().length <= 1
+    ) {
+      mainWindow = null;
+      createWindow();
+    }
+  });
+  app.on('child-process-gone', (_event, details) => {
+    console.error('child-process-gone:', details);
+  });
+}
 
 // Origins the renderer is allowed to navigate to in-window. Anything else
 // stays in-app via shell.openExternal (or is denied for the popup case).
@@ -168,6 +209,7 @@ function checkForUpdates() {
 }
 
 app.whenReady().then(() => {
+  registerCrashHandlers();
   createWindow();
   registerPowerEventBridge();
 

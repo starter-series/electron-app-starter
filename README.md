@@ -8,7 +8,7 @@ Build your desktop app. Push to release.
 
 [![CI](https://github.com/starter-series/electron-app-starter/actions/workflows/ci.yml/badge.svg)](https://github.com/starter-series/electron-app-starter/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Electron](https://img.shields.io/badge/Electron-35-47848F.svg)](https://www.electronjs.org/)
+[![Electron](https://img.shields.io/badge/Electron-42-47848F.svg)](https://www.electronjs.org/)
 
 **English** | [한국어](README.ko.md)
 
@@ -277,7 +277,7 @@ This template uses vanilla JavaScript. If you need TypeScript:
 
 ## Contributing
 
-PRs welcome. Please use the [PR template](.github/PULL_REQUEST_TEMPLATE.md).
+PRs welcome — please read [CONTRIBUTING.md](CONTRIBUTING.md) first (it spells out the design intent, lint/test/CI gates, and the "Non-goals" boundary), then use the [PR template](.github/PULL_REQUEST_TEMPLATE.md).
 
 ## License
 

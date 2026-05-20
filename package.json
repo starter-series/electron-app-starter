@@ -21,15 +21,15 @@
     "version:major": "node scripts/bump-version.js major"
   },
   "dependencies": {
-    "electron-updater": "^6.3.9"
+    "electron-updater": "^6.8.3"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "electron": "^41.3.0",
-    "electron-builder": "^26.0.12",
-    "eslint": "^10.2.1",
+    "electron": "^42.2.0",
+    "electron-builder": "^26.8.1",
+    "eslint": "^10.4.0",
     "globals": "^17.5.0",
-    "jest": "^30.3.0"
+    "jest": "^30.4.2"
   },
   "build": {
     "appId": "com.example.myapp",
