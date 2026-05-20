@@ -7,16 +7,23 @@ concurrency:
   group: deploy
   cancel-in-progress: false
 
+# Workflow-level grant is read-only. Each job below declares the elevated
+# scopes it actually needs (least privilege), so a future regression in
+# one step can't silently widen blast radius into another job.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   ci:
     uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
 
   version-guard:
     needs: ci
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
@@ -40,6 +47,8 @@ jobs:
 
   build:
     needs: version-guard
+    permissions:
+      contents: read
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
@@ -51,6 +60,25 @@ jobs:
         with:
           node-version: 22
           cache: 'npm'
+
+      # Cache the platform-specific electron binary and electron-builder's
+      # compressed binaries (~150 MB per OS). Without this every dispatch
+      # re-downloads from GitHub Releases on every runner. Keyed by OS
+      # and the resolved electron version in package-lock.json so a
+      # major bump invalidates correctly.
+      - name: Cache electron binaries
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+            ~/AppData/Local/electron/Cache
+            ~/AppData/Local/electron-builder/Cache
+          key: electron-${{ matrix.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            electron-${{ matrix.os }}-
 
       - name: Install dependencies
         run: npm ci --ignore-scripts
@@ -99,6 +127,14 @@ jobs:
     needs: [version-guard, build]
     environment: production
     runs-on: ubuntu-latest
+    # contents:write for the release publish.
+    # id-token + attestations:write for SLSA build provenance — these
+    # let third parties verify with `gh attestation verify` that the
+    # binary really came from this workflow run.
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v6
 
@@ -110,6 +146,19 @@ jobs:
 
       - name: List artifacts
         run: find artifacts -type f 2>/dev/null || echo "No artifacts found"
+
+      # SLSA Level 3 build provenance for every installer / archive.
+      # Separate from code signing: signing proves *who* signed; this
+      # attestation proves *which workflow run* produced the bytes.
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: |
+            artifacts/*.dmg
+            artifacts/*.zip
+            artifacts/*.exe
+            artifacts/*.AppImage
+            artifacts/*.deb
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
@@ -123,6 +172,12 @@ jobs:
             - **macOS:** `.dmg` (installer) + `.zip` (auto-update)
             - **Windows:** `.exe` (NSIS installer)
             - **Linux:** `.AppImage` + `.deb`
+
+            ### Verify build provenance
+            ```bash
+            gh attestation verify <downloaded-file> \
+              --repo ${{ github.repository }}
+            ```
 
             ### Auto-Update
             Existing users with auto-update enabled will receive this update automatically.

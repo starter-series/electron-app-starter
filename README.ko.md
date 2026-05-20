@@ -8,7 +8,7 @@
 
 [![CI](https://github.com/starter-series/electron-app-starter/actions/workflows/ci.yml/badge.svg)](https://github.com/starter-series/electron-app-starter/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Electron](https://img.shields.io/badge/Electron-35-47848F.svg)](https://www.electronjs.org/)
+[![Electron](https://img.shields.io/badge/Electron-42-47848F.svg)](https://www.electronjs.org/)
 
 [English](README.md) | **한국어**
 
@@ -277,7 +277,7 @@ window.addEventListener('beforeunload', off); // 반드시 unsubscribe
 
 ## 기여
 
-PR 환영합니다. [PR 템플릿](.github/PULL_REQUEST_TEMPLATE.md)을 사용해 주세요.
+PR 환영합니다 — 먼저 [CONTRIBUTING.md](CONTRIBUTING.md)를 읽어 주세요 (설계 의도, 린트/테스트/CI 게이트, "Non-goals" 경계 정리). 그다음 [PR 템플릿](.github/PULL_REQUEST_TEMPLATE.md)을 사용해 주세요.
 
 ## 라이선스
 
