@@ -3,7 +3,10 @@ const { autoUpdater } = require('electron-updater');
 const os = require('node:os');
 const path = require('node:path');
 const { buildSystemInfo } = require('./system-info.js');
+const { isAllowedNavigation: isAllowedNavigationImpl } = require('./navigation-policy.js');
 const { INVOKE_CHANNELS, EVENT_CHANNELS } = require('./shared/ipc-contract.js');
+
+const RENDERER_DIR = path.resolve(__dirname, 'renderer');
 
 let mainWindow;
 
@@ -33,21 +36,14 @@ app.on('child-process-gone', (_event, details) => {
   console.error('child-process-gone:', details);
 });
 
-// Origins the renderer is allowed to navigate to in-window. Anything else
-// stays in-app via shell.openExternal (or is denied for the popup case).
-// Add your production hosts here before shipping.
-const ALLOWED_NAVIGATION_ORIGINS = new Set([
-  'file://', // local renderer html bundle
-]);
+// Explicit origin allowlist for non-file schemes. file: is allowed only
+// for the on-disk renderer bundle directory — see navigation-policy.js.
+// Add your production hosts here (e.g. 'https://app.example.com') before
+// shipping if the renderer needs to talk to a remote origin.
+const ALLOWED_NAVIGATION_ORIGINS = new Set([]);
 
 function isAllowedNavigation(targetUrl) {
-  try {
-    const parsed = new URL(targetUrl);
-    if (parsed.protocol === 'file:') return true;
-    return ALLOWED_NAVIGATION_ORIGINS.has(parsed.origin);
-  } catch {
-    return false;
-  }
+  return isAllowedNavigationImpl(targetUrl, RENDERER_DIR, ALLOWED_NAVIGATION_ORIGINS);
 }
 
 /**

@@ -91,7 +91,7 @@ npm run dist
 - IPC contract — whitelist-enforced preload bridge, single source of truth for channels in [`src/shared/ipc-contract.js`](src/shared/ipc-contract.js)
 - Supply-chain guards — `--ignore-scripts` on install, `gitleaks` pinned by sha256, CodeQL on push/PR + weekly
 - Template UX — version bump scripts (`npm run version:patch/minor/major`), auto-created setup checklist issue on first use
-- 30 tests, 100 % statement / branch / function / line coverage
+- Tests: behavioural unit tests against the pure-function modules (`system-info`, `navigation-policy`, `shared/ipc-contract`) at 95 %+ line coverage, plus structural + contract-drift guards over `main.js` / `preload.js`. Runtime modules that touch Electron are exercised by `electron-builder --dir` in CI, not by line coverage.
 
 ### Planned
 
