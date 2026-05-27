@@ -28,7 +28,7 @@
     "electron": "^42.2.0",
     "electron-builder": "^26.8.1",
     "eslint": "^10.4.0",
-    "globals": "^17.5.0",
+    "globals": "^17.6.0",
     "jest": "^30.4.2"
   },
   "build": {
@@ -82,5 +82,8 @@
       "text-summary",
       "json-summary"
     ]
+  },
+  "overrides": {
+    "tmp": "^0.2.7"
   }
 }

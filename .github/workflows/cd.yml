@@ -154,7 +154,7 @@ jobs:
       # Separate from code signing: signing proves *who* signed; this
       # attestation proves *which workflow run* produced the bytes.
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             artifacts/*.dmg
