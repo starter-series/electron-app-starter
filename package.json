@@ -77,5 +77,8 @@
       "text-summary",
       "json-summary"
     ]
+  },
+  "overrides": {
+    "tmp": "^0.2.7"
   }
 }
