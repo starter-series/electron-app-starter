@@ -1,5 +1,5 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   INVOKE_CHANNELS,
   EVENT_CHANNELS,
@@ -54,6 +54,23 @@ describe('IPC contract', () => {
     );
     for (const channel of INVOKE_CHANNELS) {
       expect(main).toMatch(new RegExp(`ipcMain\\.handle\\(\\s*['"]${channel}['"]`));
+    }
+  });
+
+  test('every webContents.send channel in main.js is in EVENT_CHANNELS', () => {
+    // Drift guard. Without this an orphan `webContents.send('foo', ...)`
+    // — a channel main.js fires but neither the contract nor the preload
+    // whitelist knows about — slips through silently, the renderer
+    // never receives it, and the half-implemented feature looks fine.
+    const main = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'main.js'),
+      'utf8',
+    );
+    const sendMatches = [...main.matchAll(/webContents\.send\(\s*['"]([^'"]+)['"]/g)];
+    const sentChannels = new Set(sendMatches.map((m) => m[1]));
+    expect(sentChannels.size).toBeGreaterThan(0); // sanity: we are reading something
+    for (const channel of sentChannels) {
+      expect(EVENT_CHANNELS).toContain(channel);
     }
   });
 });

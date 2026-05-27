@@ -17,7 +17,11 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 // Keep these literals in sync with `src/shared/ipc-contract.js`.
 const INVOKE_CHANNELS = Object.freeze(['system-info', 'get-app-version']);
-const EVENT_CHANNELS = Object.freeze(['power-event', 'update-downloaded']);
+const EVENT_CHANNELS = Object.freeze([
+  'power-event',
+  'update-downloaded',
+  'update-error',
+]);
 
 const invokeAllowed = new Set(INVOKE_CHANNELS);
 const eventAllowed = new Set(EVENT_CHANNELS);
@@ -74,5 +78,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const channel = 'update-downloaded';
     assertAllowed(eventAllowed, channel);
     ipcRenderer.once(channel, (_event, version) => callback(version));
+  },
+  onUpdateError: (callback) => {
+    const channel = 'update-error';
+    assertAllowed(eventAllowed, channel);
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on(channel, listener);
+    return () => ipcRenderer.removeListener(channel, listener);
   },
 });

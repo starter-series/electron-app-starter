@@ -15,7 +15,11 @@ const INVOKE_CHANNELS = /** @type {const} */ (['system-info', 'get-app-version']
  * Channels pushed from the main process to the renderer
  * (subscription via `webContents.send` -> `ipcRenderer.on`).
  */
-const EVENT_CHANNELS = /** @type {const} */ (['power-event', 'update-downloaded']);
+const EVENT_CHANNELS = /** @type {const} */ ([
+  'power-event',
+  'update-downloaded',
+  'update-error',
+]);
 
 /**
  * Every channel the preload bridge is allowed to touch. Anything else is
@@ -50,6 +54,16 @@ const ALL_CHANNELS = /** @type {const} */ ([
  * @typedef {Object} PowerEvent
  * @property {'suspend' | 'resume' | 'on-ac' | 'on-battery'} kind
  * @property {number} at  Unix epoch millis when the event was emitted.
+ */
+
+/**
+ * Broadcast when electron-updater fails to download or install an update.
+ * The renderer can surface this so the user knows why the app isn't
+ * updating instead of wondering at a silent failure.
+ *
+ * @typedef {Object} UpdateError
+ * @property {string} message
+ * @property {number} attempts  Consecutive failure count this session.
  */
 
 /**

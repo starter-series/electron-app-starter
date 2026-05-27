@@ -64,6 +64,11 @@
     }
   },
   "jest": {
+    "collectCoverageFrom": [
+      "src/system-info.js",
+      "src/navigation-policy.js",
+      "src/shared/**/*.js"
+    ],
     "coverageThreshold": {
       "global": {
         "statements": 95,

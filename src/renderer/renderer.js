@@ -17,6 +17,13 @@ window.electronAPI.onUpdateDownloaded((version) => {
   banner.hidden = false;
 });
 
+// Surface auto-update failures so the user knows why the app isn't updating
+// instead of wondering at a silent failure. The default template logs to the
+// console — wire your own banner / settings UI as appropriate.
+const unsubscribeUpdateError = window.electronAPI.onUpdateError((payload) => {
+  console.error('Auto-update error:', payload);
+});
+
 // --- New: IPC bridge demo ----------------------------------------------------
 
 // 1. Request/response — one-shot call into the main process.
@@ -45,8 +52,9 @@ const unsubscribePower = window.api.onPowerEvent((event) => {
   }
 });
 
-// Always hand the listener back on teardown. Without this the main process
+// Always hand the listeners back on teardown. Without this the main process
 // keeps broadcasting to a dead WebContents reference until the app quits.
 window.addEventListener('beforeunload', () => {
   unsubscribePower();
+  unsubscribeUpdateError();
 });

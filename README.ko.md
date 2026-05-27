@@ -91,7 +91,7 @@ npm run dist
 - IPC 계약 — 화이트리스트가 강제되는 preload 브리지, 채널의 단일 출처는 [`src/shared/ipc-contract.js`](src/shared/ipc-contract.js)
 - 공급망 가드 — 설치 시 `--ignore-scripts`, sha256으로 핀된 `gitleaks`, push/PR 및 주간 CodeQL
 - 템플릿 UX — 버전 업 스크립트(`npm run version:patch/minor/major`), 첫 사용 시 자동 생성되는 설정 체크리스트 이슈
-- 테스트 30건, 구문/분기/함수/라인 커버리지 100 %
+- 테스트 구성 — 순수 함수 모듈(`system-info`, `navigation-policy`, `shared/ipc-contract`)에 대한 행위 단위 테스트가 라인 커버리지 95 %+, 그리고 `main.js` / `preload.js`에 대한 구조/계약 drift 가드. Electron 런타임 모듈은 CI의 `electron-builder --dir`로 검증 — 라인 커버리지 대상이 아님.
 
 ### 계획된 것 (Planned)
 
