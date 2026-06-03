@@ -10,6 +10,20 @@ const RENDERER_DIR = path.resolve(__dirname, 'renderer');
 
 let mainWindow;
 
+// Tunables for the renderer crash-recovery loop. A renderer that throws
+// during load (bad bundle, failed `loadFile`, OOM on first paint) dies
+// immediately, which fires `render-process-gone` again the instant we
+// relaunch it — an unbounded `createWindow()` here would spin
+// createWindow -> crash -> createWindow forever and peg a CPU core.
+// Same shape as AUTO_UPDATE_FAILURE_LIMIT below: cap the consecutive
+// attempts, then stop and surface the failure instead of looping. The
+// counter resets once a renderer survives past RENDERER_RELAUNCH_RESET_MS,
+// so a healthy app that crashes once an hour never exhausts the cap.
+const RENDERER_RELAUNCH_LIMIT = 3;
+const RENDERER_RELAUNCH_RESET_MS = 60_000;
+let rendererRelaunchCount = 0;
+let lastRendererCrashAt = 0;
+
 // Last-resort crash handlers — registered at module top so they catch
 // failures during require() and pre-whenReady startup too, not just
 // errors during the steady-state event loop. We log to stderr and
@@ -25,12 +39,40 @@ app.on('render-process-gone', (_event, webContents, details) => {
   console.error('render-process-gone:', details);
   // Only relaunch if the dead renderer was the primary and nothing else is open.
   if (
-    mainWindow
-    && webContents === mainWindow.webContents
-    && BrowserWindow.getAllWindows().length <= 1
+    !mainWindow
+    || webContents !== mainWindow.webContents
+    || BrowserWindow.getAllWindows().length > 1
   ) {
-    createWindow();
+    return;
   }
+
+  // If the last crash was long enough ago, treat this as a fresh incident
+  // rather than a continuation of a tight crash-loop, and reset the cap.
+  const now = Date.now();
+  if (now - lastRendererCrashAt > RENDERER_RELAUNCH_RESET_MS) {
+    rendererRelaunchCount = 0;
+  }
+  lastRendererCrashAt = now;
+  rendererRelaunchCount += 1;
+
+  if (rendererRelaunchCount > RENDERER_RELAUNCH_LIMIT) {
+    // The renderer is crash-looping (almost always a load-time fault that
+    // relaunching can't fix). Stop retrying and fail loudly so CI / a
+    // supervisor / the user sees it, instead of burning CPU forever.
+    console.error(
+      `render-process-gone: renderer crashed ${rendererRelaunchCount - 1}× `
+      + `within ${RENDERER_RELAUNCH_RESET_MS}ms — giving up on relaunch.`,
+    );
+    mainWindow = undefined;
+    app.exit(1);
+    return;
+  }
+
+  console.error(
+    `render-process-gone: relaunching primary window `
+    + `(attempt ${rendererRelaunchCount}/${RENDERER_RELAUNCH_LIMIT})`,
+  );
+  createWindow();
 });
 app.on('child-process-gone', (_event, details) => {
   console.error('child-process-gone:', details);
