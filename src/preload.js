@@ -65,6 +65,18 @@ const api = {
 
 contextBridge.exposeInMainWorld('api', api);
 
+// Exported for unit tests only. Under Electron these are ignored (the
+// renderer never require()s preload — it sees `window.api`), but exporting
+// lets tests exercise the *real* whitelist guard instead of grepping source.
+// Keep below the exposeInMainWorld calls so nothing reorders the bridge.
+// istanbul ignore else: in both runtimes (CJS preload + jest) `module` is
+// always defined, so the else branch is structurally unreachable — this is a
+// test-only shim, not production logic, hence excluded from branch coverage.
+/* istanbul ignore else */
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { assertAllowed, INVOKE_CHANNELS, EVENT_CHANNELS };
+}
+
 // Back-compat: keep the original `electronAPI` surface that the existing
 // renderer.js uses. New code should prefer `window.api`.
 contextBridge.exposeInMainWorld('electronAPI', {

@@ -102,6 +102,21 @@ function isAllowedNavigation(targetUrl) {
  * Both guards remain effective even if a future webPreferences regression
  * weakens contextIsolation/sandbox, so they're cheap defense-in-depth.
  */
+/**
+ * Hand an external http(s) URL to the OS browser. shell.openExternal
+ * returns a promise that rejects when the OS has no handler / the user
+ * cancels the open dialog / the protocol is blocked — a swallowed
+ * rejection there hides a real "the link did nothing" failure from
+ * whoever is reading logs, so we surface it on stderr.
+ *
+ * @param {string} url
+ */
+function openExternalUrl(url) {
+  shell.openExternal(url).catch((err) => {
+    console.error('shell.openExternal failed for', url, err);
+  });
+}
+
 function hardenWindow(win) {
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (isAllowedNavigation(url)) {
@@ -110,7 +125,7 @@ function hardenWindow(win) {
       return { action: 'allow' };
     }
     if (url.startsWith('http://') || url.startsWith('https://')) {
-      shell.openExternal(url).catch(() => {});
+      openExternalUrl(url);
     }
     return { action: 'deny' };
   });
@@ -119,7 +134,7 @@ function hardenWindow(win) {
     if (!isAllowedNavigation(url)) {
       event.preventDefault();
       if (url.startsWith('http://') || url.startsWith('https://')) {
-        shell.openExternal(url).catch(() => {});
+        openExternalUrl(url);
       }
     }
   });
@@ -178,16 +193,29 @@ function registerPowerEventBridge() {
 const AUTO_UPDATE_FAILURE_LIMIT = 3;
 let autoUpdateFailures = 0;
 
+/**
+ * Remove electron-updater's partial-download cache (userData/pending) so the
+ * next session starts from a clean slate after a run of failed updates.
+ *
+ * Returns whether the purge actually succeeded. The caller uses this to gate
+ * loop-escape: if the directory could not be removed (e.g. EBUSY because the
+ * file is still locked), tearing down the updater listeners would strand the
+ * app on the same corrupt cache with no further retries and no surfaced
+ * reason. So a failure is logged to stderr *and* reported back, and the
+ * updater stays armed to try again on the next error.
+ *
+ * @returns {boolean} true if the cache was cleared, false if removal failed
+ */
 function clearAutoUpdateCache() {
-  // electron-updater writes partial downloads under userData/pending/.
-  // Removing it forces the next session to start from a clean slate.
+  const fs = require('node:fs');
+  const pendingDir = path.join(app.getPath('userData'), 'pending');
   try {
-    const fs = require('node:fs');
-    const pendingDir = path.join(app.getPath('userData'), 'pending');
     fs.rmSync(pendingDir, { recursive: true, force: true });
     console.log('Auto-update cache cleared:', pendingDir);
+    return true;
   } catch (err) {
-    console.log('Failed to clear auto-update cache:', err.message);
+    console.error('Failed to clear auto-update cache:', pendingDir, err);
+    return false;
   }
 }
 
@@ -222,8 +250,12 @@ function checkForUpdates() {
     }
     if (autoUpdateFailures >= AUTO_UPDATE_FAILURE_LIMIT) {
       console.log(`Auto-update failed ${autoUpdateFailures}× — purging cache`);
-      clearAutoUpdateCache();
-      autoUpdater.removeAllListeners();
+      // Only stop retrying once the corrupt cache is actually gone. If the
+      // purge failed (it returns false and logs to stderr), keep the
+      // listeners armed so a later error gets another chance to clear it.
+      if (clearAutoUpdateCache()) {
+        autoUpdater.removeAllListeners();
+      }
     }
   });
 

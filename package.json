@@ -66,16 +66,18 @@
   },
   "jest": {
     "collectCoverageFrom": [
+      "src/main.js",
+      "src/preload.js",
       "src/system-info.js",
       "src/navigation-policy.js",
       "src/shared/**/*.js"
     ],
     "coverageThreshold": {
       "global": {
-        "statements": 95,
+        "statements": 100,
         "branches": 95,
-        "functions": 95,
-        "lines": 95
+        "functions": 100,
+        "lines": 100
       }
     },
     "coverageReporters": [
