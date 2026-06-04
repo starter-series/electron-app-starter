@@ -38,28 +38,12 @@ describe('Project structure', () => {
     expect(pkg.build.publish).toEqual({ provider: 'github' });
   });
 
-  test('preload uses contextBridge', () => {
-    const preload = fs.readFileSync(path.join(root, 'src', 'preload.js'), 'utf8');
-    expect(preload).toContain('contextBridge');
-    expect(preload).toContain('exposeInMainWorld');
-  });
-
-  test('main process has contextIsolation, nodeIntegration:false, sandbox:true', () => {
-    const main = fs.readFileSync(path.join(root, 'src', 'main.js'), 'utf8');
-    expect(main).toContain('contextIsolation: true');
-    expect(main).toContain('nodeIntegration: false');
-    expect(main).toContain('sandbox: true');
-  });
-
-  test('main process locks down window-open + will-navigate', () => {
-    const main = fs.readFileSync(path.join(root, 'src', 'main.js'), 'utf8');
-    // Both guards must be wired — without them, a compromised renderer
-    // can spawn a default BrowserWindow (nodeIntegration=true) or
-    // navigate to an attacker-controlled origin.
-    expect(main).toContain('setWindowOpenHandler');
-    expect(main).toContain("'will-navigate'");
-    expect(main).toContain('shell.openExternal');
-  });
+  // NOTE: the security-critical behaviour that used to be grep-asserted here
+  // (preload contextBridge exposure; main.js contextIsolation/nodeIntegration/
+  // sandbox webPreferences; window-open + will-navigate lockdown) is now
+  // exercised *behaviourally* against the real modules under a mocked electron
+  // runtime — see tests/main-behavior.test.js and tests/preload-behavior.test.js.
+  // Those tests fail if the guards are weakened; a source grep could not.
 
   test('index.html has Content-Security-Policy', () => {
     const html = fs.readFileSync(path.join(root, 'src', 'renderer', 'index.html'), 'utf8');
