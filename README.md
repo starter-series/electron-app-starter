@@ -74,7 +74,7 @@ npm run dist
 │   │   ├── cd.yml              # Cross-platform build + GitHub Release
 │   │   └── setup.yml           # Auto setup checklist on first use
 │   └── PULL_REQUEST_TEMPLATE.md
-├── eslint.config.js            # ESLint v9 flat config
+├── eslint.config.js            # ESLint v10 flat config
 └── package.json
 ```
 
@@ -83,7 +83,7 @@ npm run dist
 ### Currently implemented
 
 - Cross-platform desktop builds — macOS (`dmg`, `zip`), Windows (NSIS installer), Linux (AppImage, `deb`)
-- CI pipeline — `npm audit`, ESLint v9 flat config, Jest with a per-repo baseline coverage gate
+- CI pipeline — `npm audit`, ESLint v10 flat config, Jest with a per-repo baseline coverage gate
 - CD pipeline — manual-trigger matrix build across macOS / Windows / Linux, GitHub Release with all binaries attached
 - Auto-update — `electron-updater` against GitHub Releases, with renderer-side error surfacing
 - Optional code signing — macOS notarization + Windows signing via GitHub Secrets
@@ -123,8 +123,8 @@ npm run dist
 | Step | What it does |
 |------|-------------|
 | Security audit | `npm audit` for dependency vulnerabilities |
-| Lint | ESLint v9 flat config |
-| Test | Jest (passes with no tests by default) |
+| Lint | ESLint v10 flat config |
+| Test | Jest with the template's baseline coverage gate |
 
 ### Security & Maintenance
 
