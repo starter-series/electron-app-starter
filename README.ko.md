@@ -38,6 +38,16 @@ git clone https://github.com/starter-series/electron-app-starter my-electron-app
 cd my-electron-app && npm install && npm start
 ```
 
+변경 전후에는 headless 검증 루프를 실행하세요:
+
+```bash
+npm run lint
+npm test
+npm run build
+npm audit --audit-level=high
+npm pack --dry-run --json
+```
+
 현재 플랫폼용 빌드:
 
 ```bash
@@ -52,7 +62,7 @@ npm run dist
 │   ├── preload.js              # 프리로드 스크립트 (contextBridge + IPC 화이트리스트)
 │   ├── system-info.js          # system-info 핸들러 본체 (순수 함수)
 │   ├── shared/
-│   │   └── ipc-contract.js     # IPC 채널/타입 단일 출처
+│   │   └── ipc-contract.js     # 표준 IPC 채널 + payload 타입
 │   └── renderer/
 │       ├── index.html          # 렌더러 HTML
 │       ├── renderer.js         # 렌더러 로직 (window.api 사용)
@@ -74,7 +84,7 @@ npm run dist
 │   │   ├── cd.yml              # 크로스 플랫폼 빌드 + GitHub Release
 │   │   └── setup.yml           # 첫 사용 시 자동 설정 체크리스트
 │   └── PULL_REQUEST_TEMPLATE.md
-├── eslint.config.js            # ESLint v9 flat config
+├── eslint.config.js            # ESLint v10 flat config
 └── package.json
 ```
 
@@ -83,13 +93,14 @@ npm run dist
 ### 현재 구현된 것 (Currently implemented)
 
 - 크로스 플랫폼 데스크톱 빌드 — macOS (`dmg`, `zip`), Windows (NSIS 인스톨러), Linux (AppImage, `deb`)
-- CI 파이프라인 — `npm audit`, ESLint v9 flat config, 레포별 baseline 커버리지 게이트가 적용된 Jest
+- CI 파이프라인 — `npm audit`, ESLint v10 flat config, 레포별 baseline 커버리지 게이트가 적용된 Jest, headless `electron-builder --dir`
 - CD 파이프라인 — Actions 탭에서 수동 트리거하는 macOS / Windows / Linux 매트릭스 빌드 + 모든 바이너리가 첨부된 GitHub Release
 - 자동 업데이트 — GitHub Releases 기반 `electron-updater`, 렌더러에 오류 노출 포함
 - 선택적 코드 서명 — GitHub Secrets로 macOS 공증 + Windows 서명
 - 렌더러 하드닝 — `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`, 엄격한 CSP, `window.open` + cross-origin 네비게이션 차단
-- IPC 계약 — 화이트리스트가 강제되는 preload 브리지, 채널의 단일 출처는 [`src/shared/ipc-contract.js`](src/shared/ipc-contract.js)
+- IPC 계약 — 화이트리스트가 강제되는 preload 브리지. [`src/shared/ipc-contract.js`](src/shared/ipc-contract.js)가 표준 계약이며, sandboxed preload는 로컬 파일을 require할 수 없기 때문에 동일 채널 literal을 테스트로 drift 방지합니다.
 - 공급망 가드 — 설치 시 `--ignore-scripts`, sha256으로 핀된 `gitleaks`, push/PR 및 주간 CodeQL
+- 패키지 경계 — npm `files` allowlist로 생성된 `coverage/`, `dist/`, 설치 산출물이 `npm pack`에 들어가지 않도록 제한
 - 템플릿 UX — 버전 업 스크립트(`npm run version:patch/minor/major`), 첫 사용 시 자동 생성되는 설정 체크리스트 이슈
 - 테스트 구성 — 순수 함수 모듈(`system-info`, `navigation-policy`, `shared/ipc-contract`)에 대한 행위 단위 테스트가 라인 커버리지 95 %+, 그리고 `main.js` / `preload.js`에 대한 구조/계약 drift 가드. Electron 런타임 모듈은 CI의 `electron-builder --dir`로 검증 — 라인 커버리지 대상이 아님.
 
@@ -101,7 +112,7 @@ npm run dist
 
 - **플러그인 툴체인 대신 vanilla JavaScript.** LLM이 프레임워크를 먼저 배우지 않고도 소스를 읽고 고칠 수 있도록. 플러그인 시스템이 필요하면 Forge / electron-vite를 쓰면 됩니다. 이 템플릿의 답은 "첫날부터 CI/CD와 서명이 켜져 있어야 한다"입니다.
 - **`electron-builder` 설정은 `package.json` 한 곳.** 기여자에게 가리킬 파일이 하나뿐 — maker/publisher라는 별도 표면이 동기화될 일이 없습니다.
-- **공유 모듈에 있는 IPC 채널.** preload 화이트리스트와 메인 프로세스 핸들러 테이블 모두 `src/shared/ipc-contract.js`를 읽으므로 어긋날 수 없습니다. preload는 raw `ipcRenderer`를 절대 노출하지 않습니다.
+- **공유 모듈에 있는 IPC 채널.** 메인 프로세스 핸들러 테이블은 `src/shared/ipc-contract.js`에서 등록됩니다. sandboxed preload는 같은 채널 literal을 mirror하며, 테스트가 drift를 잡습니다. preload는 raw `ipcRenderer`를 절대 노출하지 않습니다.
 - **기본값 `sandbox: true`.** 대다수 Electron 스타터가 빼놓는 옵션이지만, 렌더러 위협 모델에서 결정적인 부분이라 항상 켜둡니다.
 - **레포별 baseline 커버리지 게이트.** 80 % 같은 고정값이 아니라 현재 상태가 바닥선 — 표면적이 작은 레포에서도 게이트가 정직하게 유지됩니다.
 
@@ -123,8 +134,9 @@ npm run dist
 | 단계 | 역할 |
 |------|------|
 | 보안 감사 | `npm audit`로 의존성 취약점 확인 |
-| 린트 | ESLint v9 flat config |
-| 테스트 | Jest (기본적으로 테스트 없이도 통과) |
+| 린트 | `src/`, `tests/`, scripts, lint config를 검사하는 ESLint v10 flat config |
+| 테스트 | Jest baseline 커버리지 게이트 |
+| 빌드 검증 | `npm run build` (`electron-builder --dir --publish never`) |
 
 ### 보안 & 유지보수
 
@@ -188,6 +200,7 @@ npm run version:minor   # 1.0.0 → 1.1.0
 npm run version:major   # 1.0.0 → 2.0.0
 
 # 현재 플랫폼용 빌드
+npm run build
 npm run dist
 
 # 특정 플랫폼 빌드
@@ -202,7 +215,7 @@ npm test
 
 ## IPC 브리지 예제
 
-실전 Electron 앱에서 꼭 필요한 두 가지 IPC 패턴을 바로 쓸 수 있는 형태로 포함했습니다. 모든 채널 이름은 [`src/shared/ipc-contract.js`](src/shared/ipc-contract.js)에 단일 출처로 모여 있어, preload 화이트리스트와 메인 프로세스 핸들러가 어긋날 수 없습니다.
+실전 Electron 앱에서 꼭 필요한 두 가지 IPC 패턴을 바로 쓸 수 있는 형태로 포함했습니다. 모든 채널 이름은 [`src/shared/ipc-contract.js`](src/shared/ipc-contract.js)에 모여 있습니다. 메인 프로세스는 이 계약에서 invoke handler를 등록하고, sandboxed preload는 같은 literal을 mirror하며 `tests/ipc-contract.test.js`가 drift를 잡습니다.
 
 **1. 요청 / 응답** — `ipcRenderer.invoke` ↔ `ipcMain.handle`
 

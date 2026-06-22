@@ -85,7 +85,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     chrome: process.versions.chrome,
     electron: process.versions.electron,
   },
-  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+  getAppVersion: () => {
+    const channel = 'get-app-version';
+    assertAllowed(invokeAllowed, channel);
+    return ipcRenderer.invoke(channel);
+  },
   onUpdateDownloaded: (callback) => {
     const channel = 'update-downloaded';
     assertAllowed(eventAllowed, channel);

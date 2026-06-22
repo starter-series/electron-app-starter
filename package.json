@@ -4,6 +4,24 @@
   "description": "Electron app starter with cross-platform CI/CD, code signing, and auto-update.",
   "main": "src/main.js",
   "private": true,
+  "files": [
+    ".github/",
+    ".gitattributes",
+    ".nvmrc",
+    "AGENTS.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "LICENSE",
+    "README.md",
+    "README.ko.md",
+    "SECURITY.md",
+    "assets/",
+    "docs/",
+    "eslint.config.js",
+    "scripts/",
+    "src/",
+    "tests/"
+  ],
   "engines": {
     "node": ">=22"
   },
@@ -11,8 +29,9 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --enable-logging",
-    "lint": "eslint src/",
-    "test": "jest --verbose --passWithNoTests --coverage",
+    "lint": "eslint src/ tests/ scripts/ eslint.config.js",
+    "test": "jest --verbose --coverage",
+    "build": "electron-builder --dir --publish never",
     "dist": "electron-builder",
     "dist:mac": "electron-builder --mac",
     "dist:win": "electron-builder --win",
@@ -67,6 +86,7 @@
   "jest": {
     "collectCoverageFrom": [
       "src/main.js",
+      "src/ipc-registration.js",
       "src/preload.js",
       "src/system-info.js",
       "src/navigation-policy.js",

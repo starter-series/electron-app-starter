@@ -47,14 +47,15 @@ describe('IPC contract', () => {
     }
   });
 
-  test('main process handles every INVOKE_CHANNELS entry', () => {
+  test('main process wires every INVOKE_CHANNELS entry', () => {
     const main = fs.readFileSync(
       path.join(__dirname, '..', 'src', 'main.js'),
       'utf8',
     );
     for (const channel of INVOKE_CHANNELS) {
-      expect(main).toMatch(new RegExp(`ipcMain\\.handle\\(\\s*['"]${channel}['"]`));
+      expect(main).toContain(`['${channel}'`);
     }
+    expect(main).toContain('registerInvokeHandlers(ipcMain, INVOKE_CHANNELS, invokeHandlers)');
   });
 
   test('every webContents.send channel in main.js is in EVENT_CHANNELS', () => {

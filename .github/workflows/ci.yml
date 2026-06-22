@@ -61,6 +61,6 @@ jobs:
         run: npm test
 
       - name: Build verification
-        run: npx electron-builder --dir --publish never
+        run: npm run build
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

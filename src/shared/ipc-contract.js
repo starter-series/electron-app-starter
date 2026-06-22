@@ -1,7 +1,8 @@
 // IPC contract — single source of truth for channel names and payload shapes.
-// Imported by both the main process and the preload script so the whitelist
-// and the handler table can never drift. The renderer sees the exposed API
-// via `window.api` (typed below for editor autocomplete).
+// The main process imports this module directly. The sandboxed preload mirrors
+// these channel strings as literals because Electron limits sandboxed preloads
+// to built-in modules; tests assert the mirror cannot drift. The renderer sees
+// the exposed API via `window.api` (typed below for editor autocomplete).
 
 'use strict';
 
