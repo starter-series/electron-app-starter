@@ -28,14 +28,18 @@
 
 ```bash
 npx @starter-series/create my-electron-app --template electron-app
-cd my-electron-app && npm install && npm start
+cd my-electron-app && npm install
+npm run build
+npm start
 ```
 
 **또는 직접 clone:**
 
 ```bash
 git clone https://github.com/starter-series/electron-app-starter my-electron-app
-cd my-electron-app && npm install && npm start
+cd my-electron-app && npm install
+npm run build
+npm start
 ```
 
 변경 전후에는 headless 검증 루프를 실행하세요:
