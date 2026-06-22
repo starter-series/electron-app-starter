@@ -28,14 +28,18 @@ Build your desktop app. Push to release.
 
 ```bash
 npx @starter-series/create my-electron-app --template electron-app
-cd my-electron-app && npm install && npm start
+cd my-electron-app && npm install
+npm run build
+npm start
 ```
 
 **Or clone directly:**
 
 ```bash
 git clone https://github.com/starter-series/electron-app-starter my-electron-app
-cd my-electron-app && npm install && npm start
+cd my-electron-app && npm install
+npm run build
+npm start
 ```
 
 Run the headless verification loop before shipping changes:
