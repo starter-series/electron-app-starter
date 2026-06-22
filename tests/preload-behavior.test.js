@@ -36,7 +36,6 @@ function loadPreload() {
   };
 
   jest.doMock('electron', () => ({ contextBridge, ipcRenderer }));
-  // eslint-disable-next-line global-require
   const preloadExports = require('../src/preload.js');
 
   return { exposed, ipcRenderer, contextBridge, preloadExports };
@@ -154,9 +153,10 @@ describe('preload: legacy electronAPI surface', () => {
     expect(exposed.electronAPI.versions.node).toEqual(expect.any(String));
   });
 
-  test('getAppVersion invokes the get-app-version channel', async () => {
+  test('getAppVersion invokes the whitelisted get-app-version channel', async () => {
     const { exposed, ipcRenderer } = loadPreload();
     await exposed.electronAPI.getAppVersion();
+    expect(() => exposed.electronAPI.getAppVersion()).not.toThrow();
     expect(ipcRenderer.invoke).toHaveBeenCalledWith('get-app-version');
   });
 

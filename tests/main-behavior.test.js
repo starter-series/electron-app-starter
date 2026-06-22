@@ -19,6 +19,7 @@ const {
   makeUpdaterMock,
   primaryWindow,
 } = require('./helpers/electron-mock');
+const { INVOKE_CHANNELS } = require('../src/shared/ipc-contract.js');
 
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 
@@ -73,7 +74,6 @@ async function loadMain(opts = {}, extraMocks = {}) {
     jest.doMock(id, factory);
   }
 
-  // eslint-disable-next-line global-require
   require('../src/main.js');
   await tick(); // let app.whenReady().then(createWindow) run
 
@@ -121,6 +121,18 @@ describe('createWindow: the BrowserWindow is created with hardened webPreference
       path.join(path.resolve(__dirname, '..', 'src'), 'renderer', 'index.html'),
     );
   });
+});
+
+describe('IPC invoke registration', () => {
+  test('registers every invoke contract channel with ipcMain.handle', async () => {
+    const { ipcMain } = await loadMain();
+
+    expect([...ipcMain.handlers.keys()].sort()).toEqual([...INVOKE_CHANNELS].sort());
+    for (const channel of INVOKE_CHANNELS) {
+      expect(ipcMain.handle).toHaveBeenCalledWith(channel, expect.any(Function));
+    }
+  });
+
 });
 
 describe('hardenWindow: setWindowOpenHandler (allow vs deny + openExternal)', () => {

@@ -4,6 +4,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { buildSystemInfo } = require('./system-info.js');
 const { isAllowedNavigation: isAllowedNavigationImpl } = require('./navigation-policy.js');
+const { registerInvokeHandlers } = require('./ipc-registration.js');
 const { INVOKE_CHANNELS, EVENT_CHANNELS } = require('./shared/ipc-contract.js');
 
 const RENDERER_DIR = path.resolve(__dirname, 'renderer');
@@ -158,9 +159,12 @@ function createWindow() {
 
 // --- IPC: request/response ---------------------------------------------------
 
-ipcMain.handle('get-app-version', () => app.getVersion());
+const invokeHandlers = new Map([
+  ['get-app-version', () => app.getVersion()],
+  ['system-info', () => buildSystemInfo({ os, electronApp: app, process })],
+]);
 
-ipcMain.handle('system-info', () => buildSystemInfo({ os, electronApp: app, process }));
+registerInvokeHandlers(ipcMain, INVOKE_CHANNELS, invokeHandlers);
 
 // --- IPC: main -> renderer broadcast ----------------------------------------
 

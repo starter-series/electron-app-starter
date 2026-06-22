@@ -38,6 +38,16 @@ git clone https://github.com/starter-series/electron-app-starter my-electron-app
 cd my-electron-app && npm install && npm start
 ```
 
+Run the headless verification loop before shipping changes:
+
+```bash
+npm run lint
+npm test
+npm run build
+npm audit --audit-level=high
+npm pack --dry-run --json
+```
+
 Then build for your platform:
 
 ```bash
@@ -52,7 +62,7 @@ npm run dist
 │   ├── preload.js              # Preload script (contextBridge + IPC whitelist)
 │   ├── system-info.js          # Pure handler body for the system-info channel
 │   ├── shared/
-│   │   └── ipc-contract.js     # Single source of truth for IPC channels + types
+│   │   └── ipc-contract.js     # Canonical IPC channels + payload types
 │   └── renderer/
 │       ├── index.html          # Renderer HTML
 │       ├── renderer.js         # Renderer logic (consumes window.api)
@@ -88,8 +98,9 @@ npm run dist
 - Auto-update — `electron-updater` against GitHub Releases, with renderer-side error surfacing
 - Optional code signing — macOS notarization + Windows signing via GitHub Secrets
 - Renderer hardening — `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`, strict CSP, `window.open` + cross-origin navigation blocked
-- IPC contract — whitelist-enforced preload bridge, single source of truth for channels in [`src/shared/ipc-contract.js`](src/shared/ipc-contract.js)
+- IPC contract — whitelist-enforced preload bridge; [`src/shared/ipc-contract.js`](src/shared/ipc-contract.js) is the canonical contract, with preload literals drift-checked in tests because sandboxed preloads cannot require local files
 - Supply-chain guards — `--ignore-scripts` on install, `gitleaks` pinned by sha256, CodeQL on push/PR + weekly
+- Package boundary — npm `files` allowlist keeps generated `coverage/`, `dist/`, and install artifacts out of `npm pack`
 - Template UX — version bump scripts (`npm run version:patch/minor/major`), auto-created setup checklist issue on first use
 - Tests: behavioural unit tests against the pure-function modules (`system-info`, `navigation-policy`, `shared/ipc-contract`) at 95 %+ line coverage, plus structural + contract-drift guards over `main.js` / `preload.js`. Runtime modules that touch Electron are exercised by `electron-builder --dir` in CI, not by line coverage.
 
@@ -101,7 +112,7 @@ npm run dist
 
 - **Vanilla JavaScript over a plugin toolchain.** LLMs can read and edit the source without first learning a framework. Forge and electron-vite are the right answer for plugin systems; this template is the right answer for "CI/CD and signing should be on by day one."
 - **`electron-builder` configured in `package.json`.** One file to point a contributor at — no separate makers/publishers surface to keep in sync.
-- **IPC channels in a shared module.** The preload whitelist and the main-process handler table both read from `src/shared/ipc-contract.js`, so they can't drift. The preload never exposes raw `ipcRenderer`.
+- **IPC channels in a shared module.** The main-process handler table registers from `src/shared/ipc-contract.js`. The sandboxed preload mirrors those channel literals and the tests fail if the mirror drifts. The preload never exposes raw `ipcRenderer`.
 - **`sandbox: true` by default.** Most Electron starters skip this; we treat it as load-bearing for the renderer threat model.
 - **Per-repo baseline coverage gate.** Floor is the current state, not a flat 80 % rule — keeps the gate honest when the surface area is small.
 
@@ -123,8 +134,9 @@ npm run dist
 | Step | What it does |
 |------|-------------|
 | Security audit | `npm audit` for dependency vulnerabilities |
-| Lint | ESLint v10 flat config |
+| Lint | ESLint v10 flat config over `src/`, `tests/`, scripts, and the lint config |
 | Test | Jest with the template's baseline coverage gate |
+| Build verification | `npm run build` (`electron-builder --dir --publish never`) |
 
 ### Security & Maintenance
 
@@ -188,6 +200,7 @@ npm run version:minor   # 1.0.0 → 1.1.0
 npm run version:major   # 1.0.0 → 2.0.0
 
 # Build for current platform
+npm run build
 npm run dist
 
 # Build for specific platform
@@ -202,7 +215,7 @@ npm test
 
 ## IPC bridge example
 
-The starter ships with a working IPC bridge that covers the two patterns real Electron apps need. All channel names live in [`src/shared/ipc-contract.js`](src/shared/ipc-contract.js) — the main process and the preload both read from it so the whitelist can never drift from the handler table.
+The starter ships with a working IPC bridge that covers the two patterns real Electron apps need. All channel names live in [`src/shared/ipc-contract.js`](src/shared/ipc-contract.js). The main process registers invoke handlers from that contract; the sandboxed preload mirrors the same literals and `tests/ipc-contract.test.js` fails if they drift.
 
 **1. Request / response** — `ipcRenderer.invoke` ↔ `ipcMain.handle`
 
