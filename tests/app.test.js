@@ -1,6 +1,3 @@
-// TODO(2nd-pass-audit-2026-05-21): tests/ are not lint-gated (npm run lint
-// only covers src/), so the node: prefix consistency rule from CONTRIBUTING
-// has to be applied by hand here.
 const fs = require('node:fs');
 const path = require('node:path');
 
