@@ -48,7 +48,7 @@
     "electron": "^42.4.1",
     "electron-builder": "^26.15.3",
     "eslint": "^10.5.0",
-    "globals": "^17.6.0",
+    "globals": "^17.7.0",
     "jest": "^30.4.2"
   },
   "build": {
