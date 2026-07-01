@@ -27,7 +27,7 @@ Build your desktop app. Push to release.
 **Via [create-starter](https://github.com/starter-series/create-starter)** (recommended):
 
 ```bash
-npx @starter-series/create my-electron-app --template electron-app
+gh repo create my-electron-app --template starter-series/electron-app-starter --clone
 cd my-electron-app && npm install
 npm run build
 npm start
