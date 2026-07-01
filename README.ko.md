@@ -27,7 +27,7 @@
 **[create-starter](https://github.com/starter-series/create-starter) 사용** (권장):
 
 ```bash
-npx @starter-series/create my-electron-app --template electron-app
+gh repo create my-electron-app --template starter-series/electron-app-starter --clone
 cd my-electron-app && npm install
 npm run build
 npm start
