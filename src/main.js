@@ -154,6 +154,9 @@ function createWindow() {
   });
 
   hardenWindow(mainWindow);
+  mainWindow.on('closed', () => {
+    mainWindow = undefined;
+  });
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 }
 
@@ -235,7 +238,7 @@ function checkForUpdates() {
   autoUpdater.on('update-downloaded', (info) => {
     console.log('Update downloaded:', info.version);
     autoUpdateFailures = 0;
-    if (mainWindow) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('update-downloaded', info.version);
     }
   });
@@ -246,7 +249,7 @@ function checkForUpdates() {
     // Symmetric to update-downloaded: tell the renderer so it can show UI
     // (toast / settings page indicator) instead of the user wondering why
     // the app never updates.
-    if (mainWindow) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('update-error', {
         message: err.message,
         attempts: autoUpdateFailures,

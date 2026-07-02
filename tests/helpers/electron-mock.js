@@ -33,8 +33,9 @@ class FakeWebContents extends EventEmitter {
  * A BrowserWindow stand-in. Every instance is pushed onto `instances` so a
  * test can grab the one main.js created inside createWindow().
  */
-class FakeBrowserWindow {
+class FakeBrowserWindow extends EventEmitter {
   constructor(opts) {
+    super();
     this.opts = opts;
     this.webContents = new FakeWebContents();
     this.loadFile = jest.fn();
@@ -44,6 +45,10 @@ class FakeBrowserWindow {
 
   static getAllWindows() {
     return FakeBrowserWindow.instances.filter((w) => !w.destroyed);
+  }
+
+  isDestroyed() {
+    return this.destroyed;
   }
 }
 FakeBrowserWindow.instances = [];

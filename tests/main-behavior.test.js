@@ -121,6 +121,15 @@ describe('createWindow: the BrowserWindow is created with hardened webPreference
       path.join(path.resolve(__dirname, '..', 'src'), 'renderer', 'index.html'),
     );
   });
+
+  test('closed window is no longer used for update notifications', async () => {
+    const { autoUpdater, window } = await loadMain({ isPackaged: true });
+
+    window.emit('closed');
+    autoUpdater.emit('update-downloaded', { version: '9.9.9' });
+
+    expect(window.webContents.send).not.toHaveBeenCalledWith('update-downloaded', '9.9.9');
+  });
 });
 
 describe('IPC invoke registration', () => {
